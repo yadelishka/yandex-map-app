@@ -14,20 +14,23 @@ const LOCATION: YMapLocationRequest = {
 
 export default function App() {
   return (
-    <div style={{ width: "600px", height: "400px" }}>
-      <YMap location={reactify.useDefault(LOCATION)}>
-        <YMapDefaultSchemeLayer />
-        <YMapDefaultFeaturesLayer />
+    <>
+      <h1>Map</h1>
+      <div style={{ width: "600px", height: "400px" }}>
+        <YMap location={reactify.useDefault(LOCATION)}>
+          <YMapDefaultSchemeLayer />
+          <YMapDefaultFeaturesLayer />
 
-        <YMapMarker
-          coordinates={reactify.useDefault([25.229762, 55.289311])}
-          draggable={true}
-        >
-          <section>
-            <h1>You can drag this header</h1>
-          </section>
-        </YMapMarker>
-      </YMap>
-    </div>
+          <YMapMarker
+            coordinates={reactify.useDefault([25.229762, 55.289311])}
+            draggable={true}
+          >
+            <section>
+              <h1>You can drag this header</h1>
+            </section>
+          </YMapMarker>
+        </YMap>
+      </div>
+    </>
   );
 }
