@@ -1,4 +1,4 @@
-import { getConfig } from "@/config/config";
+// src/utils/geo-utils.ts
 
 // Geo types
 export interface GeoCoderItemTypeV3 {
@@ -85,19 +85,39 @@ export interface GeoSuggestV2Item {
   uri?: string;
 }
 
+// Конфигурация прямо в файле (временное решение)
+const CONFIG = {
+  YANDEX_MAP_API_KEY: import.meta.env.VITE_YANDEX_API_KEY || "",
+  YANDEX_MAP_API_KEY_SUGGEST:
+    import.meta.env.VITE_YANDEX_SUGGEST_API_KEY ||
+    "c139a8bb-0769-4ea1-9926-1deb3385947e",
+};
+
+// Заглушка для getConfig
+export const getConfig = () => ({
+  consts: {
+    YANDEX_MAP_API_KEY: CONFIG.YANDEX_MAP_API_KEY,
+    YANDEX_MAP_API_KEY_SUGGEST: CONFIG.YANDEX_MAP_API_KEY_SUGGEST,
+  },
+});
+
 export const yandexGeoSuggest = (input: string, bbox: string) => {
+  const apiKey = CONFIG.YANDEX_MAP_API_KEY_SUGGEST;
   return fetch(
-    `https://suggest-maps.yandex.ru/v1/suggest?apikey=${getConfig().consts.YANDEX_MAP_API_KEY_SUGGEST}&types=biz%2Cgeo&text=${input}&lang=ru_RU&results=10&origin=jsapi2Geocoder&print_address=1&bbox=${bbox}&strict_bounds=0&attrs=uri`,
+    `https://suggest-maps.yandex.ru/v1/suggest?apikey=${apiKey}&types=biz%2Cgeo&text=${input}&lang=ru_RU&results=10&origin=jsapi2Geocoder&print_address=1&bbox=${bbox}&strict_bounds=0&attrs=uri`
   );
 };
 
 export const yandexGeoCoder = (input?: string, uri?: string) => {
-  let url = `https://geocode-maps.yandex.ru/v1/?apikey=${getConfig().consts.YANDEX_MAP_API_KEY}&format=json`;
+  const apiKey = CONFIG.YANDEX_MAP_API_KEY;
+  let url = `https://geocode-maps.yandex.ru/1.x/?apikey=${apiKey}&format=json`;
+
   if (input) {
-    url += `&geocode=${input}`;
+    url += `&geocode=${encodeURIComponent(input)}`;
   } else if (uri) {
-    url += `&uri=${uri}`;
+    url += `&uri=${encodeURIComponent(uri)}`;
   }
+
   return fetch(url);
 };
 
@@ -109,7 +129,7 @@ export const getPointData = (text: string) => {
 
 export const getRequestBounds = (
   address: { lat: number; lng: number },
-  coordinateDistance: number | [number, number] | null = null,
+  coordinateDistance: number | [number, number] | null = null
 ) => {
   if (!address.lat) {
     return null;
@@ -126,13 +146,9 @@ export const getRequestBounds = (
   }
 
   return [
-    [
-      address.lat - distance[0] / 2, // lat
-      address.lng - distance[1] / 2, // long
-    ],
-    [
-      address.lat + distance[0] / 2, // lat
-      address.lng + distance[1] / 2, // long
-    ],
+    address.lng - distance[1] / 2, // min lon
+    address.lat - distance[0] / 2, // min lat
+    address.lng + distance[1] / 2, // max lon
+    address.lat + distance[0] / 2, // max lat
   ];
 };

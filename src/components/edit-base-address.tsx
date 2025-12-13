@@ -22,10 +22,11 @@ import {
   getRequestBounds,
   yandexGeoCoder,
   yandexGeoSuggest,
+  getConfig,
 } from "../utils/geo-utils";
 /* import { getConfig } from "@/config/config"; */
 import { renderGeoSuggestV2Option } from "../utils/helpers";
-import inActivePlaceMark from "../../public/inActivePlaceMark.svg";
+import inActivePlaceMark from "../assets/inActivePlaceMark.svg";
 /* import { useEditBaseAddressModal } from "@/app/(profile)/vehicle/edit-base-address/edit-base-address-modal-context"; */
 /* import { ROUTES } from "@/app/routes"; */
 
@@ -138,27 +139,34 @@ const geoCoderV2 = async (
 const EditBaseAddress: React.FC<EditBaseAddressModalProps> = ({
   navigateToCreateVehicle,
 }) => {
-  const { t } = useTranslation();
+  /* const { t } = useTranslation();
   const { currentOrganization, updateOrganization } = useUserContext();
   const { enqueueSnackbar } = useSnackbar();
-  const navigate = useNavigate();
+  const navigate = useNavigate(); */
   const mapReference = React.useRef<{
     setZoom: (zoom: number) => void;
     setCenter: (coords: number[]) => void;
   } | null>(null);
+
   const {
     consts: { YANDEX_MAP_API_KEY },
   } = getConfig();
-  const { closeModal } = useEditBaseAddressModal();
 
-  const [upsertBase] = useSearchUpsertBaseMutation();
+  /* const { closeModal } = useEditBaseAddressModal(); 
 
+  const [upsertBase] = useSearchUpsertBaseMutation(); */
+
+  // заглушки для переменных
+  const t = (key: string) => key; // Заглушка для перевода
+  const closeModal = () => console.log("close modal");
+  const enqueueSnackbar = (message: string, options: any) =>
+    console.log(message, options);
+  const navigate = (path: string) => console.log("navigate to:", path);
+
+  // Заглушка для дефолтных данных
   const defaultValues: BaseData = {
-    coordinates: hasCoordinates(currentOrganization.bases[0]?.address)
-      ? currentOrganization.bases[0].address.coordinates
-      : [37.6156, 55.7522],
-    fullAddress:
-      currentOrganization.bases[0]?.address?.fullAddress || "Адрес не указан",
+    coordinates: [37.6156, 55.7522],
+    fullAddress: "Москва, Красная площадь",
   };
 
   const [processing, setProcessing] = React.useState<boolean>(false);
@@ -254,7 +262,17 @@ const EditBaseAddress: React.FC<EditBaseAddressModalProps> = ({
 
   const submit = (data: BaseData) => {
     setProcessing(true);
-    void upsertBase({
+    console.log("Данные для отправки:", data);
+
+    // Эмуляция успешного сохранения
+    setTimeout(() => {
+      console.log("Адрес базы изменён!", data);
+      setProcessing(false);
+      closeModal();
+    }, 1000);
+
+    // Комментируем логику отправкиу на бэкенд
+    /* void upsertBase({
       variables: {
         coordinates: data.coordinates,
         fullAddress: data.fullAddress,
@@ -297,7 +315,7 @@ const EditBaseAddress: React.FC<EditBaseAddressModalProps> = ({
         enqueueSnackbar(error.message, { variant: "error" });
         setProcessing(false);
       },
-    });
+    });*/
   };
 
   const handleSetBaseAddress = React.useCallback(
