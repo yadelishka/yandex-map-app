@@ -39,6 +39,7 @@ type BaseData = {
   fullAddress: string;
 };
 
+// не используется без бэка (тайп гард)
 function hasCoordinates(
   address: unknown
 ): address is { coordinates: [number, number]; fullAddress: string } {

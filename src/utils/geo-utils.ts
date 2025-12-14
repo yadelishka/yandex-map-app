@@ -1,4 +1,4 @@
-// src/utils/geo-utils.ts
+/* import { getConfig } from "@/config/config"; */
 
 // Geo types
 export interface GeoCoderItemTypeV3 {
@@ -85,12 +85,10 @@ export interface GeoSuggestV2Item {
   uri?: string;
 }
 
-// Конфигурация прямо в файле (временное решение)
+// Конфигурация из среды
 const CONFIG = {
   YANDEX_MAP_API_KEY: import.meta.env.VITE_YANDEX_API_KEY || "",
-  YANDEX_MAP_API_KEY_SUGGEST:
-    import.meta.env.VITE_YANDEX_SUGGEST_API_KEY ||
-    "c139a8bb-0769-4ea1-9926-1deb3385947e",
+  YANDEX_MAP_API_KEY_SUGGEST: import.meta.env.VITE_YANDEX_SUGGEST_API_KEY || "",
 };
 
 // Заглушка для getConfig
@@ -127,6 +125,7 @@ export const getPointData = (text: string) => {
   };
 };
 
+// Функция для уменьшения диапазона поиска
 export const getRequestBounds = (
   address: { lat: number; lng: number },
   coordinateDistance: number | [number, number] | null = null
