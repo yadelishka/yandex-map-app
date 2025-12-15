@@ -87,7 +87,7 @@ export interface GeoSuggestV2Item {
 
 // Конфигурация из среды
 const CONFIG = {
-  YANDEX_MAP_API_KEY: import.meta.env.VITE_YANDEX_API_KEY || "",
+  YANDEX_MAP_API_KEY: import.meta.env.VITE_YANDEX_MAPS_API_KEY || "",
   YANDEX_MAP_API_KEY_SUGGEST: import.meta.env.VITE_YANDEX_SUGGEST_API_KEY || "",
 };
 

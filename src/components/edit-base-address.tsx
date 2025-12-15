@@ -39,7 +39,7 @@ type BaseData = {
   fullAddress: string;
 };
 
-// не используется без бэка (тайп гард)
+// не используется (тайп гард для данных defaultValue)
 function hasCoordinates(
   address: unknown
 ): address is { coordinates: [number, number]; fullAddress: string } {
@@ -150,7 +150,7 @@ const EditBaseAddress: React.FC<EditBaseAddressModalProps> = ({
   } | null>(null);
 
   const {
-    consts: { YANDEX_MAP_API_KEY },
+    consts: { YANDEX_MAP_API_KEY, YANDEX_MAP_API_KEY_SUGGEST },
   } = getConfig();
 
   /* const { closeModal } = useEditBaseAddressModal(); 
@@ -163,6 +163,14 @@ const EditBaseAddress: React.FC<EditBaseAddressModalProps> = ({
   const enqueueSnackbar = (message: string, options: any) =>
     console.log(message, options);
   const navigate = (path: string) => console.log("navigate to:", path);
+
+  // Дефолтные данные
+  /* const defaultValues: BaseData = {
+    coordinates: hasCoordinates(currentOrganization.bases[0]?.address)
+      ? currentOrganization.bases[0].address.coordinates
+      : [37.6156, 55.7522],
+    fullAddress: currentOrganization.bases[0]?.address?.fullAddress || "Адрес не указан",
+  }; */
 
   // Заглушка для дефолтных данных
   const defaultValues: BaseData = {
@@ -501,7 +509,7 @@ const EditBaseAddress: React.FC<EditBaseAddressModalProps> = ({
               version="2.1.79"
               query={{
                 apikey: YANDEX_MAP_API_KEY,
-                suggest_apikey: "c139a8bb-0769-4ea1-9926-1deb3385947e",
+                suggest_apikey: YANDEX_MAP_API_KEY_SUGGEST,
                 lang: "ru_RU",
               }}
             >
@@ -537,7 +545,8 @@ const EditBaseAddress: React.FC<EditBaseAddressModalProps> = ({
             sx={{ width: "100%" }}
           >
             <Button fullWidth variant="outlined" onClick={closeModal}>
-              {t(`common.cancel`)}
+              {/* {t(`common.cancel`)} */} {/* // мультиязычка */}
+              Отменить
             </Button>
             <Button
               variant="contained"
@@ -547,7 +556,8 @@ const EditBaseAddress: React.FC<EditBaseAddressModalProps> = ({
               color="secondary"
               sx={{ borderRadius: "4px" }}
             >
-              {t("common.save")}
+              {/* {t("common.save")} */} {/* // мультиязычка */}
+              Сохранить
             </Button>
           </Grid>
         </Grid>
