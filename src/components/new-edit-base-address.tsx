@@ -204,10 +204,11 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
     }, 1000);
   }, []);
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = () => {
     submit(baseData);
-  }, [baseData, submit]);
+  };
 
+  // Временная заглушка для закрытия модального окна
   const closeModal = useCallback(() => console.log("close modal"), []);
 
   const marker = useMemo(() => {
@@ -287,7 +288,7 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
   }, [inputValue, geoSuggestV2]);
 
   // Без этого упадет приложение, тк карты не сразу подгружаются
-  if (mapLoading || !components) {
+  if (!components) {
     return (
       <Grid size={12}>
         <LinearProgress />
@@ -356,23 +357,25 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
               />
             </Grid>
           </Grid>
-          {processing && (
+          {mapLoading && (
             <Grid size={12}>
               <LinearProgress />
             </Grid>
           )}
           <MapWrapper container size={12} ref={mapContainerRef}>
-            <YMap
-              ref={mapRef}
-              location={mapState.location}
-              onClick={handleMapClick}
-            >
-              <YMapDefaultSchemeLayer />
-              <YMapDefaultFeaturesLayer />
-              {marker}
-            </YMap>
+            {!mapLoading && (
+              <YMap
+                ref={mapRef}
+                location={mapState.location}
+                onClick={handleMapClick}
+              >
+                <YMapDefaultSchemeLayer />
+                <YMapDefaultFeaturesLayer />
+                {marker}
+              </YMap>
+            )}
 
-            {processing && <CircularProgress style={markerStyle} size={48} />}
+            {mapLoading && <CircularProgress style={markerStyle} size={48} />}
           </MapWrapper>
 
           <Grid
