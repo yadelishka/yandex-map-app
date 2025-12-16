@@ -14,9 +14,9 @@ import {
   Autocomplete,
   TextField,
   Typography,
+  LinearProgress,
 } from "@mui/material";
 
-import { getConfig } from "../utils/geo-utils";
 import { renderGeoSuggestV2Option } from "../utils/helpers";
 import { initYMaps3Components } from "../libs/ymaps";
 import inActivePlaceMark from "../assets/inActivePlaceMark.svg";
@@ -35,8 +35,6 @@ const MapWrapper = styled(Grid)`
   height: 480px;
   position: relative;
   overflow: hidden;
-  border-radius: 8px;
-  border: 1px solid #ddd;
 `;
 
 const markerStyle: React.CSSProperties = {
@@ -48,10 +46,6 @@ const markerStyle: React.CSSProperties = {
 const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
   navigateToCreateVehicle,
 }) => {
-  const {
-    consts: { YANDEX_MAP_API_KEY },
-  } = getConfig();
-
   const [components, setComponents] = useState<any>(null);
   const [mapLoading, setMapLoading] = useState(true);
   const [processing, setProcessing] = useState<boolean>(false);
@@ -74,49 +68,33 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
 
   // Инициализация карт
   useEffect(() => {
-    const loadYMaps3 = async () => {
+    let mounted = true;
+
+    const init = async () => {
       try {
         setMapLoading(true);
+        const comps = await initYMaps3Components();
 
-        if (window.ymaps3) {
-          const comps = await initYMaps3Components();
+        if (mounted) {
           setComponents(comps);
-          setMapLoading(false);
-          return;
         }
-
-        const script = document.createElement("script");
-        script.src = `https://api-maps.yandex.ru/v3/?apikey=${YANDEX_MAP_API_KEY}&lang=ru_RU`;
-        script.async = true;
-
-        script.onload = async () => {
-          try {
-            await ymaps3.ready;
-            const comps = await initYMaps3Components();
-            setComponents(comps);
-          } catch (error) {
-            console.error("Failed to init YMaps3:", error);
-          } finally {
-            setMapLoading(false);
-          }
-        };
-
-        script.onerror = () => {
-          console.error("Failed to load YMaps3 script");
+      } catch (e) {
+        console.error("Failed to init YMaps3 components", e);
+      } finally {
+        if (mounted) {
           setMapLoading(false);
-        };
-
-        document.head.appendChild(script);
-      } catch (error) {
-        console.error("Error loading YMaps3:", error);
-        setMapLoading(false);
+        }
       }
     };
 
-    loadYMaps3();
-  }, [YANDEX_MAP_API_KEY]);
+    init();
 
-  // Callbacks
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // ЗАГЛУШКА ДЛЯ ГЕОСАДЖЕСТА
   const geoSuggestV2 = useCallback(async (input: string): Promise<any[]> => {
     console.log("geoSuggestV2 called with:", input);
     if (!input || input.trim().length < 2) return [];
@@ -236,49 +214,7 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
     if (!components || !components.YMapMarker) return null;
 
     return (
-      <components.YMapMarker
-        coordinates={baseData.coordinates}
-        draggable={true}
-        zIndex={1000}
-        onDragEnd={(event: any) => {
-          console.log("Drag ended:", event);
-          const coordinates = event?.coordinates as [number, number];
-
-          if (coordinates && coordinates.length === 2) {
-            console.log("✅ New marker position:", coordinates);
-
-            setBaseData((prev) => ({
-              ...prev,
-              coordinates: coordinates,
-            }));
-
-            setMapState((prev) => ({
-              location: {
-                ...prev.location,
-                center: coordinates,
-              },
-            }));
-
-            // Обновляем адрес
-            getFullAddress({ lat: coordinates[1], lng: coordinates[0] })
-              .then((address) => {
-                setBaseData((prev) => ({
-                  ...prev,
-                  fullAddress: address,
-                }));
-                setInputValue(address);
-              })
-              .catch((err) => {
-                console.error("Error getting address after drag:", err);
-                setInputValue(
-                  `Координаты: ${coordinates[0].toFixed(
-                    6
-                  )}, ${coordinates[1].toFixed(6)}`
-                );
-              });
-          }
-        }}
-      >
+      <components.YMapMarker coordinates={baseData.coordinates} zIndex={1000}>
         <div
           style={{
             width: "40px",
@@ -350,16 +286,11 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
       .finally(() => setSuggestLoading(false));
   }, [inputValue, geoSuggestV2]);
 
+  // Без этого упадет приложение, тк карты не сразу подгружаются
   if (mapLoading || !components) {
     return (
-      <Grid
-        container
-        justifyContent="center"
-        alignItems="center"
-        style={{ height: 480 }}
-      >
-        <CircularProgress />
-        <Typography sx={{ ml: 2 }}>Загрузка Яндекс Карт v3.0...</Typography>
+      <Grid size={12}>
+        <LinearProgress />
       </Grid>
     );
   }
@@ -369,12 +300,7 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
   return (
     <Grid size={12} container spacing={2}>
       <Typography variant="h5">Адрес базы (YMaps3)</Typography>
-
-      <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-        Кликните на карту или перетащите маркер для выбора местоположения
-      </Typography>
-
-      <form style={{ width: "100%" }}>
+      <form>
         <Grid container spacing={2}>
           <Grid container size={12}>
             <Grid size={12}>
@@ -386,7 +312,7 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
                 inputValue={inputValue}
                 options={options}
                 loading={suggestLoading}
-                noOptionsText="Введите адрес для поиска"
+                noOptionsText="Введите адрес"
                 loadingText="Поиск..."
                 onInputChange={(_, newInputValue) =>
                   setInputValue(newInputValue)
@@ -411,9 +337,6 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    label="Адрес базы"
-                    placeholder="Введите адрес или выберите на карте"
-                    variant="outlined"
                     fullWidth
                     slotProps={{
                       input: {
@@ -433,19 +356,15 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
               />
             </Grid>
           </Grid>
-
-          <Grid size={12}>
-            <Typography variant="body2" color="textSecondary">
-              Текущие координаты: {baseData.coordinates[0].toFixed(6)},{" "}
-              {baseData.coordinates[1].toFixed(6)}
-            </Typography>
-          </Grid>
-
+          {processing && (
+            <Grid size={12}>
+              <LinearProgress />
+            </Grid>
+          )}
           <MapWrapper container size={12} ref={mapContainerRef}>
             <YMap
               ref={mapRef}
               location={mapState.location}
-              mode="vector"
               onClick={handleMapClick}
             >
               <YMapDefaultSchemeLayer />
@@ -453,84 +372,33 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
               {marker}
             </YMap>
 
-            <Button
-              variant="contained"
-              size="small"
-              sx={{
-                position: "absolute",
-                top: "10px",
-                right: "10px",
-                background: "white",
-                color: "#333",
-                "&:hover": { background: "#f5f5f5" },
-                boxShadow: 2,
-                zIndex: 1000,
-              }}
-              onClick={() => {
-                const testCoords: [number, number] = [37.617, 55.755];
-                setBaseData({
-                  coordinates: testCoords,
-                  fullAddress: "Москва, Красная площадь",
-                });
-                setMapState({
-                  location: {
-                    center: testCoords,
-                    zoom: 16,
-                  },
-                });
-                setInputValue("Москва, Красная площадь");
-                console.log("Тест: центрировали на Красной площади");
-              }}
-            >
-              Тест центрирования
-            </Button>
-
-            {processing && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  background: "rgba(255,255,255,0.7)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  zIndex: 2000,
-                }}
-              >
-                <CircularProgress />
-              </div>
-            )}
+            {processing && <CircularProgress style={markerStyle} size={48} />}
           </MapWrapper>
 
-          <Grid container spacing={2} sx={{ width: "100%", mt: 1 }}>
-            <Grid size={6}>
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={closeModal}
-                disabled={processing}
-              >
-                Отменить
-              </Button>
-            </Grid>
-            <Grid size={6}>
-              <Button
-                variant="contained"
-                fullWidth
-                disabled={processing || !baseData.fullAddress}
-                onClick={handleSubmit}
-                color="primary"
-                sx={{
-                  borderRadius: "4px",
-                  py: 1,
-                }}
-              >
-                {processing ? "Сохранение..." : "Сохранить адрес"}
-              </Button>
-            </Grid>
+          <Grid
+            container
+            wrap="nowrap"
+            justifyContent="space-between"
+            sx={{ width: "100%" }}
+          >
+            <Button
+              fullWidth
+              variant="outlined"
+              onClick={closeModal}
+              disabled={processing}
+            >
+              Отменить
+            </Button>
+            <Button
+              variant="contained"
+              fullWidth
+              disabled={processing || !baseData.fullAddress}
+              onClick={handleSubmit}
+              color="secondary"
+              sx={{ borderRadius: "4px" }}
+            >
+              {processing ? "Сохранение..." : "Сохранить"}
+            </Button>
           </Grid>
         </Grid>
       </form>
