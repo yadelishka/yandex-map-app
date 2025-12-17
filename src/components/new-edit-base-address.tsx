@@ -63,7 +63,6 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
     },
   });
 
-  const mapRef = useRef<any>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
   // Инициализация карт
@@ -116,24 +115,88 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
     ];
   }, []);
 
-  const handleSelectAddress = useCallback(async (suggestItem: any) => {
-    console.log("handleSelectAddress:", suggestItem);
-    if (suggestItem?.coordinates) {
-      const coords: [number, number] = suggestItem.coordinates;
+  // Заглушка для типа, аналогичному GeoCoderItemTypeV3
+  const geoCoderV3 = useCallback(async (query: string) => {
+    console.log("geoCoderV3:", query);
+
+    return {
+      GeoObjectCollection: {
+        featureMember: [
+          {
+            GeoObject: {
+              Point: { pos: "37.617 55.755" }, // lon lat
+              metaDataProperty: {
+                GeocoderMetaData: {
+                  text: query,
+                  kind: "house",
+                },
+              },
+            },
+          },
+        ],
+      },
+    };
+  }, []);
+
+  const handleSetBaseAddress = useCallback(
+    (geoCoder: any, centerCoords?: { lat: number; lng: number }) => {
+      const geoObject = geoCoder.GeoObjectCollection.featureMember[0].GeoObject;
+
+      const position = geoObject.Point.pos;
+      const [lon, lat] = position.split(" ").map(Number);
+
+      const coordinates: [number, number] = centerCoords
+        ? [centerCoords.lng, centerCoords.lat]
+        : [lon, lat];
+
+      const fullAddress = geoObject.metaDataProperty.GeocoderMetaData.text;
+
+      // НУЖНО БУДЕТ ВЕРНУТЬ ТАЙП ГАРД
       setBaseData({
-        coordinates: coords,
-        fullAddress: suggestItem.displayName || suggestItem.value,
+        coordinates,
+        fullAddress,
       });
+
+      const kind = geoObject.metaDataProperty.GeocoderMetaData.kind;
+
+      let zoom = 8;
+      switch (kind) {
+        case "house":
+          zoom = 16;
+          break;
+        case "street":
+          zoom = 12;
+          break;
+        case "province":
+        case "locality":
+        case "metro":
+        default:
+          zoom = 8;
+      }
+
       setMapState((prev) => ({
         location: {
           ...prev.location,
-          center: coords,
-          zoom: 16,
+          center: coordinates,
+          zoom,
         },
       }));
-      setInputValue(suggestItem.displayName || suggestItem.value);
-    }
-  }, []);
+
+      setInputValue(fullAddress);
+    },
+    []
+  );
+
+  const handleSelectAddress = useCallback(
+    async (suggestItem: any) => {
+      const address = suggestItem.displayName || suggestItem.value;
+
+      const geoResult = await geoCoderV3(address);
+
+      handleSetBaseAddress(geoResult);
+    },
+    [geoCoderV3, handleSetBaseAddress]
+  );
 
   const getFullAddress = useCallback(
     async (centerCoords: { lat: number; lng: number }) => {
@@ -147,49 +210,33 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
   );
 
   const handleMapClick = useCallback(
-    (event: any) => {
-      console.log("Map click event received:", event);
+    async (event: any) => {
+      const coordinates = event?.detail?.coordinates;
 
-      const coordinates = event?.detail?.coordinates as
-        | [number, number]
-        | undefined;
+      if (!coordinates) return;
 
-      if (coordinates && coordinates.length === 2) {
-        console.log("✅ Map clicked at coordinates:", coordinates);
+      const [lng, lat] = coordinates;
 
-        // Обновляем данные
-        setBaseData((prev) => ({
-          ...prev,
-          coordinates: coordinates,
-        }));
+      setBaseData((prev) => ({
+        ...prev,
+        coordinates,
+      }));
 
-        // Центрируем карту
-        setMapState((prev) => ({
-          location: {
-            ...prev.location,
-            center: coordinates,
-          },
-        }));
+      setMapState((prev) => ({
+        location: {
+          ...prev.location,
+          center: coordinates,
+        },
+      }));
 
-        // Обновляем поле ввода
-        const tempAddress = `Координаты: ${coordinates[0].toFixed(
-          6
-        )}, ${coordinates[1].toFixed(6)}`;
-        setInputValue(tempAddress);
+      const fullAddress = await getFullAddress({ lat, lng });
 
-        // Получаем полный адрес
-        getFullAddress({ lat: coordinates[1], lng: coordinates[0] })
-          .then((address) => {
-            setBaseData((prev) => ({
-              ...prev,
-              fullAddress: address,
-            }));
-            setInputValue(address);
-          })
-          .catch((err) => {
-            console.error("Error getting address:", err);
-          });
-      }
+      setBaseData((prev) => ({
+        ...prev,
+        fullAddress,
+      }));
+
+      setInputValue(fullAddress);
     },
     [getFullAddress]
   );
@@ -364,11 +411,7 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
           )}
           <MapWrapper container size={12} ref={mapContainerRef}>
             {!mapLoading && (
-              <YMap
-                ref={mapRef}
-                location={mapState.location}
-                onClick={handleMapClick}
-              >
+              <YMap location={mapState.location} onClick={handleMapClick}>
                 <YMapDefaultSchemeLayer />
                 <YMapDefaultFeaturesLayer />
                 {marker}
