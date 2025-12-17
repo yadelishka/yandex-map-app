@@ -268,7 +268,7 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
             width: "40px",
             height: "40px",
             transform: "translate(-50%, -100%)",
-            cursor: "grab",
+            cursor: "pointer",
             position: "relative",
           }}
         >
@@ -411,7 +411,11 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
           )}
           <MapWrapper container size={12} ref={mapContainerRef}>
             {!mapLoading && (
-              <YMap location={mapState.location} onClick={handleMapClick}>
+              <YMap
+                location={mapState.location}
+                onClick={handleMapClick}
+                style={{ cursor: "grab" }}
+              >
                 <YMapDefaultSchemeLayer />
                 <YMapDefaultFeaturesLayer />
                 {marker}
