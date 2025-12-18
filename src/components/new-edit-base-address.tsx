@@ -20,6 +20,11 @@ import {
 import { renderGeoSuggestV2Option } from "../utils/helpers";
 import { initYMaps3Components } from "../libs/ymaps";
 import inActivePlaceMark from "../assets/inActivePlaceMark.svg";
+import {
+  getRequestBounds,
+  yandexGeoSuggest,
+  type GeoSuggestV2Item,
+} from "../utils/geo-utils";
 
 export interface EditBaseAddressModalProps {
   navigateToCreateVehicle?: boolean;
@@ -93,49 +98,97 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
     };
   }, []);
 
-  // ЗАГЛУШКА ДЛЯ ГЕОСАДЖЕСТА
-  const geoSuggestV2 = useCallback(async (input: string): Promise<any[]> => {
-    console.log("geoSuggestV2 called with:", input);
-    if (!input || input.trim().length < 2) return [];
+  // ГЕОСАДЖЕСТ (отдельный сервис, без изменений)
+  const geoSuggestV2 = React.useCallback(
+    async (input: string): Promise<GeoSuggestV2Item[]> => {
+      const res = await yandexGeoSuggest(
+        input,
+        getRequestBounds({
+          lat: baseData.coordinates[0],
+          lng: baseData.coordinates[1],
+        })?.join(",") || ""
+      );
+      const data: unknown = await res.json();
 
-    // Заглушка для поиска
-    return [
-      {
-        displayName: "Москва, Красная площадь, 1",
-        value: "Москва, Красная площадь, 1",
-        uri: "ymapsbm1://geo?data=test1",
-        coordinates: [37.617, 55.755],
-      },
-      {
-        displayName: "Москва, Кремль",
-        value: "Москва, Кремль",
-        uri: "ymapsbm1://geo?data=test2",
-        coordinates: [37.618, 55.754],
-      },
-    ];
-  }, []);
+      if (!data || typeof data !== "object" || !("results" in data)) {
+        return [];
+      }
 
-  // Заглушка для типа, аналогичному GeoCoderItemTypeV3
-  const geoCoderV3 = useCallback(async (query: string) => {
-    console.log("geoCoderV3:", query);
+      const results = data.results;
+      if (!Array.isArray(results)) {
+        return [];
+      }
 
-    return {
-      GeoObjectCollection: {
-        featureMember: [
-          {
-            GeoObject: {
-              Point: { pos: "37.617 55.755" }, // lon lat
-              metaDataProperty: {
-                GeocoderMetaData: {
-                  text: query,
-                  kind: "house",
-                },
-              },
-            },
-          },
-        ],
-      },
-    };
+      return results.map((item: unknown): GeoSuggestV2Item => {
+        if (!item || typeof item !== "object") {
+          return { value: "", displayName: "", uri: "" };
+        }
+
+        const address = "address" in item ? item.address : null;
+        const title = "title" in item ? item.title : null;
+        const subtitle = "subtitle" in item ? item.subtitle : null;
+        const uri = "uri" in item ? item.uri : "";
+
+        const formattedAddress =
+          address &&
+          typeof address === "object" &&
+          "formatted_address" in address
+            ? address.formatted_address
+            : "";
+
+        const titleText =
+          title && typeof title === "object" && "text" in title
+            ? title.text
+            : "";
+
+        const subtitleText =
+          subtitle && typeof subtitle === "object" && "text" in subtitle
+            ? subtitle.text
+            : "";
+
+        return {
+          value: typeof formattedAddress === "string" ? formattedAddress : "",
+          displayName: `${typeof titleText === "string" ? titleText : ""} ${
+            typeof subtitleText === "string" ? subtitleText : ""
+          }`.trim(),
+          uri: typeof uri === "string" ? uri : "",
+        };
+      });
+    },
+    [baseData.coordinates]
+  );
+
+  React.useEffect(() => {
+    if (inputValue === "") {
+      setOptions([]);
+      return;
+    }
+
+    setSuggestLoading(true);
+    geoSuggestV2(inputValue)
+      .then((results) => {
+        setOptions(results);
+      })
+      .catch(() => {
+        setOptions([]);
+      })
+      .finally(() => {
+        setSuggestLoading(false);
+      });
+  }, [inputValue, geoSuggestV2]);
+
+  React.useEffect(() => {
+    setInputValue(baseData.fullAddress || "");
+  }, [baseData.fullAddress]);
+
+  const submit = useCallback((data: BaseData) => {
+    setProcessing(true);
+    console.log("Данные для отправки:", data);
+    setTimeout(() => {
+      console.log("Адрес базы изменён!", data);
+      setProcessing(false);
+      alert(`Адрес сохранен: ${data.fullAddress}`);
+    }, 1000);
   }, []);
 
   const handleSetBaseAddress = useCallback(
@@ -186,6 +239,29 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
     },
     []
   );
+
+  // Заглушка для геокодера
+  const geoCoderV3 = useCallback(async (query: string) => {
+    console.log("geoCoderV3:", query);
+
+    return {
+      GeoObjectCollection: {
+        featureMember: [
+          {
+            GeoObject: {
+              Point: { pos: "37.617 55.755" }, // lon lat
+              metaDataProperty: {
+                GeocoderMetaData: {
+                  text: query,
+                  kind: "house",
+                },
+              },
+            },
+          },
+        ],
+      },
+    };
+  }, []);
 
   const handleSelectAddress = useCallback(
     async (suggestItem: any) => {
@@ -241,16 +317,6 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
     [getFullAddress]
   );
 
-  const submit = useCallback((data: BaseData) => {
-    setProcessing(true);
-    console.log("Данные для отправки:", data);
-    setTimeout(() => {
-      console.log("Адрес базы изменён!", data);
-      setProcessing(false);
-      alert(`Адрес сохранен: ${data.fullAddress}`);
-    }, 1000);
-  }, []);
-
   const handleSubmit = () => {
     submit(baseData);
   };
@@ -287,6 +353,7 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
     );
   }, [components, baseData.coordinates, inActivePlaceMark, getFullAddress]);
 
+  // ЭТО ФЕЙК ИВЕНТ, НАДО ИЗБАВИТЬСЯ!!
   useEffect(() => {
     if (!components || !mapContainerRef.current) return;
 
