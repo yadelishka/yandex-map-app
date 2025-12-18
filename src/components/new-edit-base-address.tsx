@@ -263,6 +263,7 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
     };
   }, []);
 
+  // ИСПРАВИТЬ ПОД ГЕОКОДЕР
   const handleSelectAddress = useCallback(
     async (suggestItem: any) => {
       const address = suggestItem.displayName || suggestItem.value;
@@ -274,6 +275,7 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
     [geoCoderV3, handleSetBaseAddress]
   );
 
+  // ИСПРАВИТЬ ПОД ГЕОКОДЕР
   const getFullAddress = useCallback(
     async (centerCoords: { lat: number; lng: number }) => {
       console.log("getFullAddress:", centerCoords);
@@ -285,6 +287,7 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
     []
   );
 
+  // ИСПРАВИТЬ ПОД ГЕОКОДЕР
   const handleMapClick = useCallback(
     async (event: any) => {
       const coordinates = event?.detail?.coordinates;
