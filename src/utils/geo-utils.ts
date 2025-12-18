@@ -108,7 +108,7 @@ export const yandexGeoSuggest = (input: string, bbox: string) => {
 
 export const yandexGeoCoder = (input?: string, uri?: string) => {
   const apiKey = CONFIG.YANDEX_MAP_API_KEY;
-  let url = `https://geocode-maps.yandex.ru/1.x/?apikey=${apiKey}&format=json`;
+  let url = `https://geocode-maps.yandex.ru/v1/?apikey=${apiKey}&format=json`;
 
   if (input) {
     url += `&geocode=${encodeURIComponent(input)}`;

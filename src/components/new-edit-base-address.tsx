@@ -22,7 +22,9 @@ import { initYMaps3Components } from "../libs/ymaps";
 import inActivePlaceMark from "../assets/inActivePlaceMark.svg";
 import {
   getRequestBounds,
+  yandexGeoCoder,
   yandexGeoSuggest,
+  type GeoCoderItemTypeV3,
   type GeoSuggestV2Item,
 } from "../utils/geo-utils";
 
@@ -46,6 +48,25 @@ const markerStyle: React.CSSProperties = {
   position: "absolute",
   top: "calc(50% - 36.5px)",
   left: "calc(50% - 31px)",
+};
+
+const geoCoderV2 = async (
+  centerCoords?: { lat: number; lng: number },
+  textValue?: string,
+  uri?: string
+): Promise<GeoCoderItemTypeV3> => {
+  const text =
+    textValue ||
+    (centerCoords ? [centerCoords.lng, centerCoords.lat].join(",") : undefined);
+  const geoCoder = await yandexGeoCoder(text, uri);
+  const result: unknown = await geoCoder.json();
+
+  // НУЖНО БУДЕТ ВЕРНУТЬ ТАЙП ГАРД
+  /* if (!isGeoCoderResponse(result)) {
+    throw new Error("Invalid geocoder response");
+  } */
+
+  return result.response;
 };
 
 const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
@@ -182,12 +203,13 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
   }, [baseData.fullAddress]);
 
   const submit = useCallback((data: BaseData) => {
+    // мок для теста (вместо отправки на бэк)
     setProcessing(true);
     console.log("Данные для отправки:", data);
     setTimeout(() => {
       console.log("Адрес базы изменён!", data);
       setProcessing(false);
-      alert(`Адрес сохранен: ${data.fullAddress}`);
+      console.log(`Адрес сохранен: ${data.fullAddress}`);
     }, 1000);
   }, []);
 
@@ -240,85 +262,32 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
     []
   );
 
-  // Заглушка для геокодера
-  const geoCoderV3 = useCallback(async (query: string) => {
-    console.log("geoCoderV3:", query);
+  // ГЕОКОДЕР
+  const handleSelectAddress = async (suggestItem: GeoSuggestV2Item) => {
+    const address = suggestItem.displayName || suggestItem.value;
+    const oldGeoCoder = await geoCoderV2(
+      undefined,
+      suggestItem.uri ? undefined : address,
+      suggestItem.uri
+    );
+    handleSetBaseAddress(oldGeoCoder);
+  };
 
-    return {
-      GeoObjectCollection: {
-        featureMember: [
-          {
-            GeoObject: {
-              Point: { pos: "37.617 55.755" }, // lon lat
-              metaDataProperty: {
-                GeocoderMetaData: {
-                  text: query,
-                  kind: "house",
-                },
-              },
-            },
-          },
-        ],
-      },
-    };
-  }, []);
+  const getFullAddress = async (centerCoords: { lat: number; lng: number }) => {
+    const oldGeoCoder = await geoCoderV2(centerCoords);
+    const geoObject =
+      oldGeoCoder.GeoObjectCollection.featureMember[0].GeoObject;
+    setBaseData({
+      coordinates: [centerCoords.lng, centerCoords.lat],
+      fullAddress: geoObject.metaDataProperty.GeocoderMetaData.text,
+    });
+  };
 
-  // ИСПРАВИТЬ ПОД ГЕОКОДЕР
-  const handleSelectAddress = useCallback(
-    async (suggestItem: any) => {
-      const address = suggestItem.displayName || suggestItem.value;
-
-      const geoResult = await geoCoderV3(address);
-
-      handleSetBaseAddress(geoResult);
-    },
-    [geoCoderV3, handleSetBaseAddress]
-  );
-
-  // ИСПРАВИТЬ ПОД ГЕОКОДЕР
-  const getFullAddress = useCallback(
-    async (centerCoords: { lat: number; lng: number }) => {
-      console.log("getFullAddress:", centerCoords);
-      // Заглушка для геокодирования
-      return `Адрес по координатам: ${centerCoords.lat.toFixed(
-        6
-      )}, ${centerCoords.lng.toFixed(6)}`;
-    },
-    []
-  );
-
-  // ИСПРАВИТЬ ПОД ГЕОКОДЕР
-  const handleMapClick = useCallback(
-    async (event: any) => {
-      const coordinates = event?.detail?.coordinates;
-
-      if (!coordinates) return;
-
-      const [lng, lat] = coordinates;
-
-      setBaseData((prev) => ({
-        ...prev,
-        coordinates,
-      }));
-
-      setMapState((prev) => ({
-        location: {
-          ...prev.location,
-          center: coordinates,
-        },
-      }));
-
-      const fullAddress = await getFullAddress({ lat, lng });
-
-      setBaseData((prev) => ({
-        ...prev,
-        fullAddress,
-      }));
-
-      setInputValue(fullAddress);
-    },
-    [getFullAddress]
-  );
+  const handleMapClick = (_object: any, event: any) => {
+    if (!event || !event.coordinates) return;
+    const [lon, lat] = event.coordinates;
+    void getFullAddress({ lat, lng: lon });
+  };
 
   const handleSubmit = () => {
     submit(baseData);
@@ -356,54 +325,6 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
     );
   }, [components, baseData.coordinates, inActivePlaceMark, getFullAddress]);
 
-  // ЭТО ФЕЙК ИВЕНТ, НАДО ИЗБАВИТЬСЯ!!
-  useEffect(() => {
-    if (!components || !mapContainerRef.current) return;
-
-    const handleContainerClick = (e: MouseEvent) => {
-      console.log("Container clicked", e);
-
-      const target = e.target as HTMLElement;
-      if (target.closest('[class*="ymaps3x0--marker"]')) {
-        console.log("Clicked on marker, ignoring");
-        return;
-      }
-
-      const fakeEvent = {
-        detail: {
-          coordinates: [
-            37.61 + Math.random() * 0.01,
-            55.75 + Math.random() * 0.01,
-          ] as [number, number],
-          type: "click",
-          target: { type: "map" },
-        },
-      };
-
-      handleMapClick(fakeEvent);
-    };
-
-    const container = mapContainerRef.current;
-    container.addEventListener("click", handleContainerClick);
-
-    return () => {
-      container.removeEventListener("click", handleContainerClick);
-    };
-  }, [components, handleMapClick]);
-
-  useEffect(() => {
-    if (inputValue === "" || inputValue.length < 2) {
-      setOptions([]);
-      return;
-    }
-
-    setSuggestLoading(true);
-    geoSuggestV2(inputValue)
-      .then((results) => setOptions(results))
-      .catch(() => setOptions([]))
-      .finally(() => setSuggestLoading(false));
-  }, [inputValue, geoSuggestV2]);
-
   // Без этого упадет приложение, тк карты не сразу подгружаются
   if (!components) {
     return (
@@ -413,7 +334,12 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
     );
   }
 
-  const { YMap, YMapDefaultSchemeLayer, YMapDefaultFeaturesLayer } = components;
+  const {
+    YMap,
+    YMapDefaultSchemeLayer,
+    YMapDefaultFeaturesLayer,
+    YMapListener,
+  } = components;
 
   return (
     <Grid size={12} container spacing={2}>
@@ -481,11 +407,8 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
           )}
           <MapWrapper container size={12} ref={mapContainerRef}>
             {!mapLoading && (
-              <YMap
-                location={mapState.location}
-                onClick={handleMapClick}
-                style={{ cursor: "grab" }}
-              >
+              <YMap location={mapState.location} style={{ cursor: "grab" }}>
+                <YMapListener onClick={handleMapClick} />
                 <YMapDefaultSchemeLayer />
                 <YMapDefaultFeaturesLayer />
                 {marker}

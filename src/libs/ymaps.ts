@@ -61,6 +61,7 @@ export async function initYMaps3Components() {
       YMapDefaultSchemeLayer: components.YMapDefaultSchemeLayer,
       YMapDefaultFeaturesLayer: components.YMapDefaultFeaturesLayer,
       YMapMarker: components.YMapMarker,
+      YMapListener: components.YMapListener,
       reactify: components.reactify,
     };
   } catch (error) {
