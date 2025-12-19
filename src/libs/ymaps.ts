@@ -16,6 +16,7 @@ export const {
 } = reactify.module(ymaps3);
  */
 
+import { YMapZoomControl } from "@yandex/ymaps3-default-ui-theme";
 import React from "react";
 import ReactDOM from "react-dom";
 
@@ -56,6 +57,7 @@ export async function getYMaps3Components() {
 export async function initYMaps3Components() {
   try {
     const components = await getYMaps3Components();
+
     return {
       YMap: components.YMap,
       YMapDefaultSchemeLayer: components.YMapDefaultSchemeLayer,

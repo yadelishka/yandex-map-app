@@ -27,7 +27,6 @@ import {
   type GeoCoderItemTypeV3,
   type GeoSuggestV2Item,
 } from "../utils/geo-utils";
-
 export interface EditBaseAddressModalProps {
   navigateToCreateVehicle?: boolean;
 }
@@ -88,8 +87,6 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
       zoom: 16,
     },
   });
-
-  const mapContainerRef = useRef<HTMLDivElement>(null);
 
   // Инициализация карт
   useEffect(() => {
@@ -405,7 +402,7 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
               <LinearProgress />
             </Grid>
           )}
-          <MapWrapper container size={12} ref={mapContainerRef}>
+          <MapWrapper container size={12}>
             {!mapLoading && (
               <YMap location={mapState.location} style={{ cursor: "grab" }}>
                 <YMapListener onClick={handleMapClick} />
