@@ -336,6 +336,8 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
     YMapDefaultSchemeLayer,
     YMapDefaultFeaturesLayer,
     YMapListener,
+    YMapZoomControl,
+    YMapControls,
   } = components;
 
   return (
@@ -408,6 +410,9 @@ const EditBaseAddressV3: React.FC<EditBaseAddressModalProps> = ({
                 <YMapListener onClick={handleMapClick} />
                 <YMapDefaultSchemeLayer />
                 <YMapDefaultFeaturesLayer />
+                <YMapControls position="left">
+                  <YMapZoomControl />
+                </YMapControls>
                 {marker}
               </YMap>
             )}

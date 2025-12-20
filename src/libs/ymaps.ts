@@ -16,13 +16,12 @@ export const {
 } = reactify.module(ymaps3);
  */
 
-import { YMapZoomControl } from "@yandex/ymaps3-default-ui-theme";
 import React from "react";
 import ReactDOM from "react-dom";
 
 let ymaps3ReactComponents: any = null;
 
-//ГЛОБАЛЬНЫЙ флаг загрузки
+// ГЛОБАЛЬНЫЙ флаг загрузки
 export let isYMaps3Loaded = false;
 
 export async function getYMaps3Components() {
@@ -37,16 +36,28 @@ export async function getYMaps3Components() {
   await ymaps3.ready;
   isYMaps3Loaded = true;
 
-  const [ymaps3React] = await Promise.all([
+  // Регистрируем CDN
+  ymaps3.import.registerCdn("https://cdn.jsdelivr.net/npm/{package}", [
+    "@yandex/ymaps3-default-ui-theme@0.0",
+  ]);
+
+  const [ymaps3React, ymaps3DefaultUiTheme] = await Promise.all([
     ymaps3.import("@yandex/ymaps3-reactify"),
+    ymaps3.import("@yandex/ymaps3-default-ui-theme"),
     ymaps3.ready,
   ]);
 
   const reactify = ymaps3React.reactify.bindTo(React, ReactDOM);
-  const components = reactify.module(ymaps3);
+
+  //основные компоненты
+  const baseComponents = reactify.module(ymaps3);
+
+  //компоненты темы
+  const themeComponents = reactify.module(ymaps3DefaultUiTheme);
 
   ymaps3ReactComponents = {
-    ...components,
+    ...baseComponents,
+    ...themeComponents,
     reactify,
     ymaps3,
   };
@@ -64,6 +75,10 @@ export async function initYMaps3Components() {
       YMapDefaultFeaturesLayer: components.YMapDefaultFeaturesLayer,
       YMapMarker: components.YMapMarker,
       YMapListener: components.YMapListener,
+
+      YMapControls: components.YMapControls,
+      YMapZoomControl: components.YMapZoomControl,
+
       reactify: components.reactify,
     };
   } catch (error) {
