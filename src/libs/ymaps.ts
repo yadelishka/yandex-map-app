@@ -21,22 +21,46 @@ import ReactDOM from "react-dom";
 
 let ymaps3ReactComponents: any = null;
 
-// ГЛОБАЛЬНЫЙ флаг загрузки
-export let isYMaps3Loaded = false;
+// Флаг загрузки скрипта
+let scriptPromise: Promise<void> | null = null;
+
+// Загрузка скрипта
+export function loadYMaps3Script() {
+  if (scriptPromise) return scriptPromise;
+
+  scriptPromise = new Promise<void>((resolve, reject) => {
+    if (window.ymaps3) {
+      resolve();
+      return;
+    }
+
+    const apiKey = import.meta.env.VITE_YANDEX_MAPS_API_KEY;
+
+    const script = document.createElement("script");
+    script.src = `https://api-maps.yandex.ru/v3/?apikey=${apiKey}&lang=ru_RU`;
+    script.async = true;
+
+    script.onload = () => {
+      if (window.ymaps3) resolve();
+      else reject(new Error("Yandex Maps v3 loaded but ymaps3 is undefined"));
+    };
+
+    script.onerror = () =>
+      reject(new Error("Failed to load Yandex Maps v3 script"));
+
+    document.head.appendChild(script);
+  });
+
+  return scriptPromise;
+}
 
 export async function getYMaps3Components() {
-  if (ymaps3ReactComponents) {
-    return ymaps3ReactComponents;
-  }
+  await loadYMaps3Script();
 
-  if (!window.ymaps3) {
-    throw new Error("YMaps3 not loaded. Load script first.");
-  }
+  if (ymaps3ReactComponents) return ymaps3ReactComponents;
 
   await ymaps3.ready;
-  isYMaps3Loaded = true;
 
-  // Регистрируем CDN
   ymaps3.import.registerCdn("https://cdn.jsdelivr.net/npm/{package}", [
     "@yandex/ymaps3-default-ui-theme@0.0",
   ]);
@@ -44,15 +68,11 @@ export async function getYMaps3Components() {
   const [ymaps3React, ymaps3DefaultUiTheme] = await Promise.all([
     ymaps3.import("@yandex/ymaps3-reactify"),
     ymaps3.import("@yandex/ymaps3-default-ui-theme"),
-    ymaps3.ready,
   ]);
 
   const reactify = ymaps3React.reactify.bindTo(React, ReactDOM);
 
-  //основные компоненты
   const baseComponents = reactify.module(ymaps3);
-
-  //компоненты темы
   const themeComponents = reactify.module(ymaps3DefaultUiTheme);
 
   ymaps3ReactComponents = {
