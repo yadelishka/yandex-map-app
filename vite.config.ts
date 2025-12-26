@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
 
     server: {
-      port: 3000,
+      port: 3002,
       proxy: {
         "/yandex-api": {
           target: "https://api-maps.yandex.ru",
